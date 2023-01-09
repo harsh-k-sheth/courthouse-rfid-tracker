@@ -1,0 +1,16 @@
+[project]
+name = "courthouse-rfid-tracker"
+version = "1.0.0"
+description = "Real-time location tracking for physical court case files using passive UHF RFID"
+requires-python = ">=3.11"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

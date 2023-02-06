@@ -1,0 +1,61 @@
+# Courthouse RFID Edge Gateway Configuration
+# -------------------------------------------
+# Each gateway serves one floor or section of the courthouse.
+# Multiple gateways connect to the same cloud backend.
+
+gateway:
+  id: "GW-FLOOR1-EAST"
+  batch_interval_seconds: 2    # How often to flush events to cloud
+  heartbeat_interval_seconds: 60
+
+# MQTT connection to AWS IoT Core / Azure IoT Hub
+mqtt:
+  broker_host: "a1b2c3d4e5f6g7-ats.iot.us-east-1.amazonaws.com"
+  broker_port: 8883
+  topic_prefix: "courthouse/rfid"
+  # TLS mutual authentication (X.509 certificates)
+  cert_path: "/etc/rfid-gateway/certs/device.pem.crt"
+  key_path: "/etc/rfid-gateway/certs/private.pem.key"
+  ca_path: "/etc/rfid-gateway/certs/AmazonRootCA1.pem"
+
+# Deduplication settings
+deduplication:
+  cooldown_seconds: 30          # Min time between publishes for same tag+reader
+  rssi_change_threshold: 10.0   # dBm change to trigger immediate publish
+
+# RFID reader connections (LLRP over local network)
+readers:
+  - id: "JUDGE-MARTINEZ-BENCH"
+    host: "192.168.10.101"
+    port: 5084
+    power_dbm: 27.0             # Lower power, bench is isolated
+
+  - id: "CLK-RM3-T1"
+    host: "192.168.10.102"
+    port: 5084
+    power_dbm: 25.0             # Reduced power, tables are close together
+
+  - id: "CLK-RM3-T2"
+    host: "192.168.10.103"
+    port: 5084
+    power_dbm: 25.0             # Matched to T1 for consistent overlap zone
+
+  - id: "ARCHIVE-SHELF-A"
+    host: "192.168.10.104"
+    port: 5084
+    power_dbm: 30.0             # Full power, shelves are spaced out
+
+  - id: "ARCHIVE-SHELF-B"
+    host: "192.168.10.105"
+    port: 5084
+    power_dbm: 30.0
+
+  - id: "COURTROOM2-TABLE"
+    host: "192.168.10.106"
+    port: 5084
+    power_dbm: 28.0
+
+  - id: "ATTY-REVIEW-1"
+    host: "192.168.10.107"
+    port: 5084
+    power_dbm: 26.0

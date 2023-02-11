@@ -1,0 +1,66 @@
+# Load test configuration for the REST API.
+# Simulates courthouse staff searching for files
+# during a busy morning.
+#
+# Run: npx artillery run artillery_config.yml
+
+config:
+  target: "{{ $processEnvironment.API_URL }}"
+  phases:
+    # Warm up: 5 users/sec for 30 seconds
+    - duration: 30
+      arrivalRate: 5
+      name: "Warm up"
+    # Ramp up: 5 to 25 users/sec over 60 seconds
+    - duration: 60
+      arrivalRate: 5
+      rampTo: 25
+      name: "Ramp up"
+    # Sustained load: 25 users/sec for 120 seconds
+    - duration: 120
+      arrivalRate: 25
+      name: "Sustained load"
+    # Spike: 50 users/sec for 30 seconds (morning rush)
+    - duration: 30
+      arrivalRate: 50
+      name: "Morning rush spike"
+
+  defaults:
+    headers:
+      Content-Type: "application/json"
+
+scenarios:
+  # Scenario 1: Search for a file by case number (most common)
+  - name: "Search by case number"
+    weight: 40
+    flow:
+      - get:
+          url: "/files/search?q=2024-CR"
+
+  # Scenario 2: Get current location of a specific file
+  - name: "Check file location"
+    weight: 30
+    flow:
+      - get:
+          url: "/files/4A:7B:2C:9F/location"
+
+  # Scenario 3: View movement history
+  - name: "View movement history"
+    weight: 15
+    flow:
+      - get:
+          url: "/files/4A:7B:2C:9F/history?start=2024-11-15T00:00:00Z&end=2024-11-15T23:59:59Z"
+
+  # Scenario 4: Check reader health
+  - name: "Reader status check"
+    weight: 10
+    flow:
+      - get:
+          url: "/readers/status"
+
+  # Scenario 5: Idle files check (admin use)
+  - name: "Find idle files"
+    weight: 5
+    flow:
+      - get:
+          url: "/analytics/idle?hours=48"

@@ -1,0 +1,49 @@
+%% RFID Event Processing Pipeline
+%% Shows the journey of a single tag detection from reader to dashboard
+
+sequenceDiagram
+    participant Tag as 📋 RFID Tag<br/>(on case file)
+    participant Reader as 📡 Fixed Reader<br/>(under desk)
+    participant GW as 🖥️ Edge Gateway<br/>(Raspberry Pi)
+    participant MQTT as ☁️ IoT Core<br/>(MQTT Broker)
+    participant Lambda as ⚡ Event Processor<br/>(Lambda)
+    participant DB as 🗄️ DynamoDB
+    participant API as 🌐 REST API
+    participant Dash as 🖥️ Dashboard
+
+    Note over Tag,Reader: File placed on Clerk Room 3, Table 1
+
+    Reader->>Reader: RF field energizes tag antenna
+    Tag-->>Reader: Backscatter: Tag ID + RSSI
+    Note right of Reader: Tag: 4A:7B:2C:9F<br/>RSSI: -35 dBm
+
+    Reader->>GW: LLRP TagReportData
+    
+    GW->>GW: Deduplication check
+    Note right of GW: First detection of this<br/>tag at this reader?<br/>YES → publish
+
+    GW->>MQTT: MQTT Publish (QoS 1)<br/>Topic: courthouse/rfid/events
+    Note right of GW: Payload: {tag_id, reader_id,<br/>rssi_dbm, timestamp}
+
+    MQTT->>Lambda: IoT Rule triggers Lambda
+
+    Lambda->>Lambda: 1. Validate event
+    Lambda->>Lambda: 2. Add to RSSI sliding window
+    Lambda->>Lambda: 3. Compute median RSSI per reader
+    Lambda->>Lambda: 4. Compare readers, apply 6dBm threshold
+    Note right of Lambda: Reader CLK-RM3-T1: median -35 dBm<br/>Reader CLK-RM3-T2: median -55 dBm<br/>Margin: 20 dBm > 6 dBm<br/>→ HIGH confidence
+
+    Lambda->>DB: 5. Get previous location
+    DB-->>Lambda: Previous: Judge Bench
+    Note right of Lambda: Location changed!<br/>→ Write DEPARTURE + ARRIVAL
+
+    Lambda->>DB: 6. Update file_locations (current)
+    Lambda->>DB: 7. Write file_movements (DEPARTURE from bench)
+    Lambda->>DB: 8. Write file_movements (ARRIVAL at clerk desk)
+
+    Dash->>API: GET /files/4A:7B:2C:9F/location
+    API->>DB: Query file_locations
+    DB-->>API: {location: "Clerk Room 3 - Table 1", confidence: "HIGH"}
+    API-->>Dash: 200 OK + location data
+    
+    Note over Dash: Dashboard shows file<br/>at Clerk Room 3, Table 1<br/>with movement history

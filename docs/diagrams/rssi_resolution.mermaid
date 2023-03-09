@@ -1,0 +1,56 @@
+%% RSSI-Based Location Resolution Algorithm
+%% The core logic for resolving overlapping read zones
+
+flowchart TD
+    START([Tag detected by<br/>one or more readers]) --> COLLECT
+
+    COLLECT["Collect RSSI readings<br/>into sliding window buffer<br/>(default: 10 seconds)"]
+    COLLECT --> PRUNE
+
+    PRUNE["Prune readings outside<br/>the time window"]
+    PRUNE --> CHECK_EMPTY
+
+    CHECK_EMPTY{Any readings<br/>remaining?}
+    CHECK_EMPTY -->|No| RETURN_LAST["Return last known<br/>location (if any)"]
+    CHECK_EMPTY -->|Yes| COMPUTE
+
+    COMPUTE["Compute MEDIAN RSSI<br/>per tag-reader pair<br/>(median resists outliers)"]
+    COMPUTE --> SORT
+
+    SORT["Sort readers by<br/>median RSSI descending<br/>(strongest first)"]
+    SORT --> COUNT
+
+    COUNT{How many readers<br/>detected the tag?}
+    COUNT -->|"1 reader"| SINGLE["Assign to that reader<br/>Confidence: HIGH"]
+    COUNT -->|"2+ readers"| COMPARE
+
+    COMPARE["Calculate margin:<br/>best RSSI - runner-up RSSI"]
+    COMPARE --> THRESHOLD
+
+    THRESHOLD{"Margin >= 6 dBm<br/>threshold?"}
+    THRESHOLD -->|"Yes (clear winner)"| HIGH["Assign to strongest reader<br/>Confidence: HIGH"]
+    THRESHOLD -->|"No (ambiguous)"| ZONE_CHECK
+
+    ZONE_CHECK{"Are both readers<br/>in the same zone?"}
+    ZONE_CHECK -->|"Yes"| ZONE["Report at ZONE level<br/>Confidence: HIGH<br/>(e.g., 'Clerk Room 3 Cluster')"]
+    ZONE_CHECK -->|"No"| HAS_HISTORY
+
+    HAS_HISTORY{"Has previous<br/>known location?"}
+    HAS_HISTORY -->|"Yes"| KEEP_LAST["Keep previous location<br/>Confidence: AMBIGUOUS"]
+    HAS_HISTORY -->|"No"| BEST_GUESS["Assign to strongest reader<br/>Confidence: AMBIGUOUS"]
+
+    SINGLE --> STORE
+    HIGH --> STORE
+    ZONE --> STORE
+    KEEP_LAST --> STORE
+    BEST_GUESS --> STORE
+
+    STORE[("Store as current location<br/>+ update movement history")]
+
+    style START fill:#4A90D9,stroke:#2E6BB0,color:#fff
+    style SINGLE fill:#27AE60,stroke:#1E8C4C,color:#fff
+    style HIGH fill:#27AE60,stroke:#1E8C4C,color:#fff
+    style ZONE fill:#F5A623,stroke:#D4891C,color:#fff
+    style KEEP_LAST fill:#E74C3C,stroke:#C0392B,color:#fff
+    style BEST_GUESS fill:#E74C3C,stroke:#C0392B,color:#fff
+    style STORE fill:#3B48CC,stroke:#2C38A0,color:#fff

@@ -1,0 +1,60 @@
+%% Courthouse RFID Tracking System - Architecture Overview
+%% Render at https://mermaid.live or in any Mermaid-compatible viewer
+
+graph TB
+    subgraph Courthouse["🏛️ Courthouse Floor"]
+        R1["📡 Reader<br/>Judge Bench"]
+        R2["📡 Reader<br/>Clerk Desk 1"]
+        R3["📡 Reader<br/>Clerk Desk 2"]
+        R4["📡 Reader<br/>Archive Shelf A"]
+        R5["📡 Reader<br/>Courtroom Table"]
+        
+        GW["🖥️ Edge Gateway<br/>(Raspberry Pi)<br/>• Batch reads<br/>• Deduplicate<br/>• RSSI forwarding"]
+    end
+
+    subgraph Cloud["☁️ Cloud Backend (AWS)"]
+        IOT["AWS IoT Core<br/>(MQTT Broker)"]
+        
+        subgraph Processing["Event Processing"]
+            EP["Lambda:<br/>Event Processor<br/>• Validate events<br/>• RSSI resolution<br/>• Location assignment"]
+            HM["Lambda:<br/>Health Monitor<br/>• Reader heartbeats<br/>• Offline detection"]
+        end
+        
+        subgraph Storage["Data Layer"]
+            DDB1[("DynamoDB:<br/>file_locations<br/>(Current State)")]
+            DDB2[("DynamoDB:<br/>file_movements<br/>(History)")]
+            DDB3[("DynamoDB:<br/>readers<br/>(Registry)")]
+        end
+        
+        API["API Gateway<br/>(REST API)"]
+        APIL["Lambda:<br/>Location API"]
+        CW["CloudWatch<br/>Alarms & Logs"]
+    end
+
+    subgraph Dashboard["🖥️ Web Dashboard"]
+        UI["React App<br/>• File search<br/>• Floor map<br/>• Movement timeline<br/>• Reader status"]
+    end
+
+    R1 & R2 & R3 & R4 & R5 -->|LLRP| GW
+    GW -->|"MQTT over TLS"| IOT
+    IOT -->|"Topic: events"| EP
+    IOT -->|"Topic: heartbeat"| HM
+    EP --> DDB1 & DDB2
+    EP --> CW
+    HM --> DDB3
+    HM --> CW
+    API --> APIL
+    APIL --> DDB1 & DDB2 & DDB3
+    UI -->|"HTTPS"| API
+
+    classDef reader fill:#4A90D9,stroke:#2E6BB0,color:#fff
+    classDef gateway fill:#F5A623,stroke:#D4891C,color:#fff
+    classDef aws fill:#FF9900,stroke:#CC7A00,color:#fff
+    classDef db fill:#3B48CC,stroke:#2C38A0,color:#fff
+    classDef ui fill:#27AE60,stroke:#1E8C4C,color:#fff
+
+    class R1,R2,R3,R4,R5 reader
+    class GW gateway
+    class IOT,EP,HM,APIL,API,CW aws
+    class DDB1,DDB2,DDB3 db
+    class UI ui

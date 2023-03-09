@@ -1,0 +1,53 @@
+%% Database Schema - DynamoDB Tables
+%% PK = Partition Key, SK = Sort Key, GSI = Global Secondary Index
+
+erDiagram
+    file_locations {
+        string tag_id PK "RFID tag unique ID"
+        string case_number "Court case number (GSI)"
+        string case_name "Case display name"
+        string reader_id "Current reader location"
+        string location_label "Human-readable location"
+        string zone "Logical zone grouping"
+        float rssi "Signal strength at detection"
+        string confidence "HIGH or AMBIGUOUS"
+        string last_seen "ISO timestamp of last detection"
+        string updated_at "Record update timestamp"
+    }
+
+    file_movements {
+        string tag_id PK "RFID tag unique ID"
+        string timestamp SK "ISO timestamp (sort key)"
+        string reader_id "Reader that detected tag"
+        string location_label "Human-readable location"
+        string zone "Logical zone"
+        string event_type "ARRIVAL / DEPARTURE / AMBIGUOUS"
+        float rssi "Signal strength"
+        number ttl "Auto-expiry epoch (90 days)"
+    }
+
+    readers {
+        string reader_id PK "Unique reader identifier"
+        string location_label "Installation location"
+        string zone "Logical zone grouping"
+        string floor "Building floor"
+        string room "Room identifier"
+        float power_dbm "Configured transmit power"
+        string status "ONLINE / OFFLINE"
+        string last_heartbeat "Last health check ISO timestamp"
+        string gateway_id "Parent gateway"
+        map metadata "Temperature and detection stats"
+    }
+
+    tags {
+        string tag_id PK "RFID tag unique ID"
+        string case_number "Court case file number"
+        string case_name "Case display name"
+        string registered_at "When tag was registered"
+        string registered_by "Staff who tagged the file"
+    }
+
+    tags ||--o{ file_locations : "current location"
+    tags ||--o{ file_movements : "movement history"
+    readers ||--o{ file_locations : "detected at"
+    readers ||--o{ file_movements : "detected at"
